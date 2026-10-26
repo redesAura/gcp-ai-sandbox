@@ -1,5 +1,5 @@
 resource "google_kms_key_ring" "estado" {
-  name     = "${var.prefijo_empresa}-aisbx-tfstate"
+  name     = "${var.prefijo_empresa}-tfstate"
   project  = google_project.seed.project_id
   location = var.region
 

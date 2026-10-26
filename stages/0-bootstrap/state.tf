@@ -1,5 +1,5 @@
 resource "google_storage_bucket" "estado" {
-  name                        = "${var.prefijo_empresa}-aisbx-tfstate"
+  name                        = "${var.prefijo_empresa}-tfstate"
   project                     = google_project.seed.project_id
   location                    = var.region
   uniform_bucket_level_access = true

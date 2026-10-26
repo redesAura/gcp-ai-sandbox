@@ -1,6 +1,6 @@
 org_id          = "123456789012"
 billing_account = "OITGEW-SALCED-JUYHTY"
-prefijo_empresa = "empresa"
+prefijo_empresa = "redesaura"
 region          = "us-central1"
-github_org      = "equipo-redes"
+github_org      = "redesAura"
 github_repo     = "gcp-ai-sandbox"

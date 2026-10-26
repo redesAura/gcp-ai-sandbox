@@ -1,11 +1,18 @@
-mock_provider "google" {}
+mock_provider "google" {
+  mock_resource "google_service_account" {
+    defaults = {
+      name  = "projects/redesaura-seed/serviceAccounts/sa-mock@redesaura-seed.iam.gserviceaccount.com"
+      email = "sa-mock@redesaura-seed.iam.gserviceaccount.com"
+    }
+  }
+}
 mock_provider "google-beta" {}
 
 variables {
   org_id          = "123456789012"
   billing_account = "ABCDEF-123456-ABCDEF"
-  prefijo_empresa = "empresa"
-  github_org      = "equipo-aisbx"
+  prefijo_empresa = "redesaura"
+  github_org      = "redesAura"
   github_repo     = "gcp-ai-sandbox"
 }
 
@@ -45,7 +52,7 @@ run "wif_solo_este_repo" {
   command = plan
 
   assert {
-    condition     = google_iam_workload_identity_pool_provider.github.attribute_condition == "assertion.repository == \"equipo-aisbx/gcp-ai-sandbox\""
+    condition     = google_iam_workload_identity_pool_provider.github.attribute_condition == "assertion.repository == \"redesAura/gcp-ai-sandbox\""
     error_message = "El proveedor de WIF solo debe aceptar este repositorio."
   }
 }

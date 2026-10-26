@@ -1,5 +1,5 @@
 locals {
-  seed_project_id = "${var.prefijo_empresa}-aisbx-seed"
+  seed_project_id = "${var.prefijo_empresa}-seed"
 
   etiquetas = {
     team        = "plataforma"
