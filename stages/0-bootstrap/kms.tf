@@ -7,6 +7,7 @@ resource "google_kms_key_ring" "estado" {
 }
 
 resource "google_kms_crypto_key" "estado" {
+  #checkov:skip=CKV_GCP_82:prevent_destroy breaks terraform test teardown; nothing is deployed (see ADR 0004)
   name            = "tfstate"
   key_ring        = google_kms_key_ring.estado.id
   rotation_period = "7776000s" # 90 días
