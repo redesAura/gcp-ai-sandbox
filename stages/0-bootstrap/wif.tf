@@ -5,6 +5,7 @@ resource "google_iam_workload_identity_pool" "github" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {
+  #checkov:skip=CKV_GCP_125:attribute_condition restricts by assertion.repository to this repo only; checkov only recognises assertion.sub
   project                            = google_project.seed.project_id
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-provider"

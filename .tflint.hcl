@@ -1,5 +1,5 @@
 plugin "google" {
     enabled = true
-    version = "X.Y.Z"
+    version = "0.39.0"
     source  = "github.com/terraform-linters/tflint-ruleset-google"
 }

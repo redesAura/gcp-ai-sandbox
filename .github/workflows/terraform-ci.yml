@@ -1,0 +1,53 @@
+name: terraform-ci
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [stages/0-bootstrap]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: terraform init
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: ${{ matrix.dir }}
+        run: terraform validate
+
+      - name: terraform test
+        working-directory: ${{ matrix.dir }}
+        run: terraform test
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint --recursive --config "$(pwd)/.tflint.hcl"
+
+      - name: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          quiet: true

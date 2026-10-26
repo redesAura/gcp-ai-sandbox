@@ -1,4 +1,5 @@
 resource "google_storage_bucket" "estado" {
+  #checkov:skip=CKV_GCP_62:Bucket access is recorded via Cloud Audit Logs (DATA_READ/DATA_WRITE) on the seed project
   name                        = "${var.prefijo_empresa}-tfstate"
   project                     = google_project.seed.project_id
   location                    = var.region

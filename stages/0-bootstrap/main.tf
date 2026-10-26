@@ -16,11 +16,12 @@ resource "google_folder" "bootstrap" {
 }
 
 resource "google_project" "seed" {
-  name            = local.seed_project_id
-  project_id      = local.seed_project_id
-  folder_id       = google_folder.bootstrap.name
-  billing_account = var.billing_account
-  labels          = local.etiquetas
+  name                = local.seed_project_id
+  project_id          = local.seed_project_id
+  folder_id           = google_folder.bootstrap.name
+  billing_account     = var.billing_account
+  labels              = local.etiquetas
+  auto_create_network = false
 }
 
 resource "google_project_service" "apis" {
@@ -38,4 +39,19 @@ resource "google_project_service" "apis" {
   project            = google_project.seed.project_id
   service            = each.value
   disable_on_destroy = false
+}
+
+resource "google_project_iam_audit_config" "seed" {
+  project = google_project.seed.project_id
+  service = "allServices"
+
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
 }
