@@ -1,0 +1,4 @@
+#TODO
+Contexto:
+Decisión:
+Consecuencias:
