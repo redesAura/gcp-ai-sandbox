@@ -1,0 +1,416 @@
+/**
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+variable "access_context_manager_policy_id" {
+  description = "The id of the default Access Context Manager policy. Can be obtained by running `gcloud access-context-manager policies list --organization YOUR_ORGANIZATION_ID --format=\"value(name)\"`."
+  type        = string
+  default     = ""
+}
+
+variable "enable_hub_and_spoke" {
+  description = "Enable Hub-and-Spoke architecture."
+  type        = bool
+  default     = false
+}
+
+variable "enable_scc_resources_in_terraform" {
+  description = "Create Security Command Center resources in Terraform. Security Command Center must be activated before the creation of the resources. See [Overview of activating Security Command Center](https://cloud.google.com/security-command-center/docs/activate-scc-overview) before enabling this feature."
+  type        = bool
+  default     = false
+}
+
+variable "enable_kms_key_usage_tracking" {
+  description = "Enable KMS centralized key usage tracking system."
+  type        = bool
+  default     = true
+}
+
+variable "domains_to_allow" {
+  description = "The list of domains to allow users from in IAM. Used by Domain Restricted Sharing Organization Policy. Must include the domain of the organization you are deploying the foundation. To add other domains you must also grant access to these domains to the Terraform Service Account used in the deploy."
+  type        = list(string)
+}
+
+variable "scc_notification_name" {
+  description = "Name of the Security Command Center Notification. It must be unique in the organization. Run `gcloud scc notifications describe <scc_notification_name> --organization=org_id --location=global` to check if it already exists."
+  type        = string
+}
+
+variable "create_access_context_manager_access_policy" {
+  description = "Whether to create access context manager access policy."
+  type        = bool
+  default     = true
+}
+
+variable "scc_notification_filter" {
+  description = "Filter used to create the Security Command Center Notification, you can see more details on how to create filters in https://cloud.google.com/security-command-center/docs/how-to-api-filter-notifications#create-filter"
+  type        = string
+  default     = "state = \"ACTIVE\""
+}
+
+variable "enforce_allowed_worker_pools" {
+  description = "Whether to enforce the organization policy restriction on allowed worker pools for Cloud Build."
+  type        = bool
+  default     = false
+}
+
+variable "log_export_storage_location" {
+  description = "The location of the storage bucket used to export logs."
+  type        = string
+  default     = null
+}
+
+variable "billing_export_dataset_location" {
+  description = "The location of the dataset for billing data export."
+  type        = string
+  default     = null
+}
+
+variable "log_export_storage_force_destroy" {
+  description = "(Optional) If set to true, delete all contents when destroying the resource; otherwise, destroying the resource will fail if contents are present."
+  type        = bool
+  default     = false
+}
+
+variable "log_export_storage_versioning" {
+  description = "(Optional) Toggles bucket versioning, ability to retain a non-current object version when the live object version gets replaced or deleted."
+  type        = bool
+  default     = false
+}
+
+variable "log_export_storage_retention_policy" {
+  description = "Configuration of the bucket's data retention policy for how long objects in the bucket should be retained."
+  type = object({
+    is_locked             = bool
+    retention_period_days = number
+  })
+  default = null
+}
+
+
+variable "project_budget" {
+  description = <<EOT
+  Budget configuration for projects.
+  budget_amount: The amount to use as the budget.
+  alert_spent_percents: A list of percentages of the budget to alert on when threshold is exceeded.
+  alert_pubsub_topic: The name of the Cloud Pub/Sub topic where budget related messages will be published, in the form of `projects/{project_id}/topics/{topic_id}`.
+  alert_spend_basis: The type of basis used to determine if spend has passed the threshold. Possible choices are `CURRENT_SPEND` or `FORECASTED_SPEND` (default).
+  EOT
+  type = object({
+    net_hub_budget_amount                       = optional(number, 1000)
+    net_hub_alert_spent_percents                = optional(list(number), [1.2])
+    net_hub_alert_pubsub_topic                  = optional(string, null)
+    net_hub_budget_alert_spend_basis            = optional(string, "FORECASTED_SPEND")
+    shared_network_budget_amount                = optional(number, 1000)
+    shared_network_alert_spent_percents         = optional(list(number), [1.2])
+    shared_network_alert_pubsub_topic           = optional(string, null)
+    shared_network_budget_alert_spend_basis     = optional(string, "FORECASTED_SPEND")
+    interconnect_budget_amount                  = optional(number, 1000)
+    interconnect_alert_spent_percents           = optional(list(number), [1.2])
+    interconnect_alert_pubsub_topic             = optional(string, null)
+    interconnect_budget_alert_spend_basis       = optional(string, "FORECASTED_SPEND")
+    org_secrets_budget_amount                   = optional(number, 1000)
+    org_secrets_alert_spent_percents            = optional(list(number), [1.2])
+    org_secrets_alert_pubsub_topic              = optional(string, null)
+    org_secrets_budget_alert_spend_basis        = optional(string, "FORECASTED_SPEND")
+    org_billing_export_budget_amount            = optional(number, 1000)
+    org_billing_export_alert_spent_percents     = optional(list(number), [1.2])
+    org_billing_export_alert_pubsub_topic       = optional(string, null)
+    org_billing_export_budget_alert_spend_basis = optional(string, "FORECASTED_SPEND")
+    org_audit_logs_budget_amount                = optional(number, 1000)
+    org_audit_logs_alert_spent_percents         = optional(list(number), [1.2])
+    org_audit_logs_alert_pubsub_topic           = optional(string, null)
+    org_audit_logs_budget_alert_spend_basis     = optional(string, "FORECASTED_SPEND")
+    common_kms_budget_amount                    = optional(number, 1000)
+    common_kms_alert_spent_percents             = optional(list(number), [1.2])
+    common_kms_alert_pubsub_topic               = optional(string, null)
+    common_kms_budget_alert_spend_basis         = optional(string, "FORECASTED_SPEND")
+    scc_notifications_budget_amount             = optional(number, 1000)
+    scc_notifications_alert_spent_percents      = optional(list(number), [1.2])
+    scc_notifications_alert_pubsub_topic        = optional(string, null)
+    scc_notifications_budget_alert_spend_basis  = optional(string, "FORECASTED_SPEND")
+  })
+  default = {}
+}
+
+variable "gcp_groups" {
+  description = <<EOT
+  Groups to grant specific roles in the Organization.
+  platform_viewer: Google Workspace or Cloud Identity group that have the ability to view resource information across the Google Cloud organization.
+  security_reviewer: Google Workspace or Cloud Identity group that members are part of the security team responsible for reviewing cloud security
+  network_viewer: Google Workspace or Cloud Identity group that members are part of the networking team and review network configurations.
+  scc_admin: Google Workspace or Cloud Identity group that can administer Security Command Center.
+  audit_viewer: Google Workspace or Cloud Identity group that members are part of an audit team and view audit logs in the logging project.
+  global_secrets_admin: Google Workspace or Cloud Identity group that members are responsible for putting secrets into Secrets Management.
+  EOT
+  type = object({
+    audit_viewer         = optional(string, null)
+    security_reviewer    = optional(string, null)
+    network_viewer       = optional(string, null)
+    scc_admin            = optional(string, null)
+    global_secrets_admin = optional(string, null)
+    kms_admin            = optional(string, null)
+  })
+  default = {}
+}
+
+variable "essential_contacts_language" {
+  description = "Essential Contacts preferred language for notifications, as a ISO 639-1 language code. See [Supported languages](https://cloud.google.com/resource-manager/docs/managing-notification-contacts#supported-languages) for a list of supported languages."
+  type        = string
+  default     = "en"
+}
+
+variable "remote_state_bucket" {
+  description = "Backend bucket to load Terraform Remote State Data from previous steps."
+  type        = string
+}
+
+variable "essential_contacts_domains_to_allow" {
+  description = "The list of domains that email addresses added to Essential Contacts can have."
+  type        = list(string)
+}
+
+variable "create_unique_tag_key" {
+  description = "Creates unique organization-wide tag keys by adding a random suffix to each key."
+  type        = bool
+  default     = false
+}
+
+variable "tfc_org_name" {
+  description = "Name of the TFC organization"
+  type        = string
+  default     = ""
+}
+
+variable "project_deletion_policy" {
+  description = "The deletion policy for the project created."
+  type        = string
+  default     = "PREVENT"
+}
+
+variable "folder_deletion_protection" {
+  description = "Prevent Terraform from destroying or recreating the folder."
+  type        = string
+  default     = true
+}
+
+variable "custom_restricted_services" {
+  description = "List of custom services to be protected by the VPC-SC perimeter. If empty, all supported services (https://cloud.google.com/vpc-service-controls/docs/supported-products) will be protected."
+  type        = list(string)
+  default     = []
+}
+
+variable "custom_restricted_services_dry_run" {
+  description = "List of custom services to be protected by the VPC-SC perimeter. If empty, all supported services (https://cloud.google.com/vpc-service-controls/docs/supported-products) will be protected."
+  type        = list(string)
+  default     = []
+}
+
+variable "ingress_policies_dry_run_map" {
+  description = "Map of additional ingress policies for the dry-run perimeter. Map key is the Terraform state key."
+  type = map(object({
+    title = optional(string, null)
+    from = object({
+      sources = optional(object({
+        resources     = optional(list(string), [])
+        access_levels = optional(list(string), [])
+      }), {}),
+      identity_type = optional(string, null)
+      identities    = optional(list(string), null)
+    })
+    to = object({
+      operations = optional(map(object({
+        methods     = optional(list(string), [])
+        permissions = optional(list(string), [])
+      })), {}),
+      roles     = optional(list(string), null)
+      resources = optional(list(string), ["*"])
+    })
+  }))
+  default = {}
+}
+
+variable "egress_policies_dry_run_map" {
+  description = "Map of additional egress policies for the dry-run perimeter. Map key is the Terraform state key."
+  type = map(object({
+    title = optional(string, null)
+    from = object({
+      sources = optional(object({
+        resources     = optional(list(string), [])
+        access_levels = optional(list(string), [])
+      }), {}),
+      identity_type = optional(string, null)
+      identities    = optional(list(string), null)
+    })
+    to = object({
+      operations = optional(map(object({
+        methods     = optional(list(string), [])
+        permissions = optional(list(string), [])
+      })), {}),
+      roles              = optional(list(string), null)
+      resources          = optional(list(string), ["*"])
+      external_resources = optional(list(string), [])
+    })
+  }))
+  default = {}
+}
+
+variable "ingress_policies_map" {
+  description = "Map of additional ingress policies for the enforced perimeter. Map key is the Terraform state key."
+  type = map(object({
+    title = optional(string, null)
+    from = object({
+      sources = optional(object({
+        resources     = optional(list(string), [])
+        access_levels = optional(list(string), [])
+      }), {}),
+      identity_type = optional(string, null)
+      identities    = optional(list(string), null)
+    })
+    to = object({
+      operations = optional(map(object({
+        methods     = optional(list(string), [])
+        permissions = optional(list(string), [])
+      })), {}),
+      roles     = optional(list(string), null)
+      resources = optional(list(string), ["*"])
+    })
+  }))
+  default = {}
+}
+
+variable "egress_policies_map" {
+  description = "Map of additional egress policies for the enforced perimeter. Map key is the Terraform state key."
+  type = map(object({
+    title = optional(string, null)
+    from = object({
+      sources = optional(object({
+        resources     = optional(list(string), [])
+        access_levels = optional(list(string), [])
+      }), {}),
+      identity_type = optional(string, null)
+      identities    = optional(list(string), null)
+    })
+    to = object({
+      operations = optional(map(object({
+        methods     = optional(list(string), [])
+        permissions = optional(list(string), [])
+      })), {}),
+      roles              = optional(list(string), null)
+      resources          = optional(list(string), ["*"])
+      external_resources = optional(list(string), [])
+    })
+  }))
+  default = {}
+}
+
+variable "perimeter_additional_members" {
+  description = "The list of additional members to be added to the enforced perimeter access level members list. To be able to see the resources protected by the VPC Service Controls in the perimeter, add your user in this list. Entries must be in the standard GCP form: `user:email@example.com` or `serviceAccount:my-service-account@example.com`."
+  type        = list(string)
+  default     = []
+}
+
+variable "perimeter_additional_members_dry_run" {
+  description = "The list of additional members to be added to the dry-run perimeter access level members list. To be able to see the resources protected by the VPC Service Controls in the perimeter, add your user in this list. Entries must be in the standard GCP form: `user:email@example.com` or `serviceAccount:my-service-account@example.com`."
+  type        = list(string)
+  default     = []
+}
+
+variable "resources" {
+  description = "A list of GCP resources that are inside of the service perimeter. Currently only projects and VPC networks are allowed."
+  type        = list(string)
+  default     = []
+}
+
+variable "resources_dry_run" {
+  description = "A list of GCP resources that are inside of the service perimeter. Currently only projects and VPC networks are allowed. If set, a dry-run policy will be set."
+  type        = list(string)
+  default     = []
+}
+
+variable "required_egress_rules_app_infra" {
+  description = "Required egress rule app infra enforced mode."
+  type        = bool
+  default     = false
+}
+
+variable "required_egress_rules_app_infra_dry_run" {
+  description = "Required egress rule app infra dry run mode."
+  type        = bool
+  default     = false
+}
+
+variable "required_ingress_rules_app_infra" {
+  description = "Required ingress rule app infra enforced mode."
+  type        = bool
+  default     = false
+}
+
+variable "required_ingress_rules_app_infra_dry_run" {
+  description = "Required ingress rule app infra dry run mode."
+  type        = bool
+  default     = false
+}
+
+variable "envs" {
+  type = map(bool)
+  default = {
+    development   = true
+    nonproduction = true
+    production    = true
+  }
+}
+
+variable "logs_export_sleep_duration" {
+  description = "The duration to wait for logs export resources to initialize (e.g., 30s, 2m)."
+  type        = string
+  default     = "30s"
+}
+
+variable "projects_sleep_duration" {
+  description = "The duration to wait for core project resources (audit logs, billing, networking, KMS, etc.) to initialize."
+  type        = string
+  default     = "30s"
+}
+
+variable "kms_iam_sleep_duration" {
+  description = "The duration to wait for KMS and Cloud Function IAM bindings to propagate (e.g., 60s, 2m)."
+  type        = string
+  default     = "60s"
+}
+
+variable "bucket_sleep_duration" {
+  description = "The duration to wait for the Cloud Function source bucket to initialize (e.g., 30s, 2m)."
+  type        = string
+  default     = "30s"
+}
+
+variable "sa_iam_membership_sleep_duration" {
+  description = "The duration to wait for Service Account IAM membership propagation (e.g., 30s)."
+  type        = string
+  default     = "30s"
+}
+
+variable "vpc_sc_propagation_sleep_duration" {
+  description = "The duration to wait for VPC Service Controls propagation (e.g., 60s, 2m)."
+  type        = string
+  default     = "60s"
+}
+
+variable "production_only_deploy" {
+  description = "If true, only the production environment will be deployed, development and nonproduction will be skipped."
+  type        = bool
+  default     = false
+}

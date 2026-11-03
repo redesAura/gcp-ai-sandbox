@@ -92,3 +92,13 @@ Después abre el pull request en GitHub, espera a que el pipeline esté en verde
 
 - Decisiones de arquitectura: [`docs/adr/`](docs/adr/)
 - Etapa de bootstrap: [`stages/0-bootstrap/`](stages/0-bootstrap/)
+
+## Código de terceros
+
+Las etapas `1-org`, `2-security` y `3-networks` contienen código copiado **sin adaptar** de [terraform-example-foundation](https://github.com/terraform-google-modules/terraform-example-foundation) (Google LLC, licencia Apache-2.0), versión `v7.0.0`. Los encabezados de licencia originales se conservan en cada archivo. El origen exacto de cada archivo, la versión y el aviso de atribución están en:
+
+- [`stages/1-org/TEMPLATE_SOURCE.md`](stages/1-org/TEMPLATE_SOURCE.md)
+- [`stages/2-security/TEMPLATE_SOURCE.md`](stages/2-security/TEMPLATE_SOURCE.md)
+- [`stages/3-networks/TEMPLATE_SOURCE.md`](stages/3-networks/TEMPLATE_SOURCE.md)
+
+Ese código todavía no está adaptado ni validado contra este repositorio; se adaptará en los siguientes pasos del sprint 2.
