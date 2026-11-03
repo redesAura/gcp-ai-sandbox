@@ -1,0 +1,37 @@
+# 3-networks-hub-and-spoke/production
+
+The purpose of this step is to set up shared VPCs with default DNS, NAT (optional), Private Service networking, VPC service controls, onprem Dedicated Interconnect, onprem VPN and baseline firewall rules for environment nonproduction. This version of the Network step will makes usage of the Hub and Spoke network architecture.
+
+## Prerequisites
+
+1. 0-bootstrap executed successfully.
+1. 1-org executed successfully.
+1. 2-environments/envs/production executed successfully.
+1. 3-networks-hub-and-spoke/envs/shared executed successfully.
+1. Obtain the value for the access_context_manager_policy_id variable. Can be obtained by running `gcloud access-context-manager policies list --organization YOUR_ORGANIZATION_ID --format="value(name)"`.
+
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| domain | The DNS name of peering managed zone, for instance 'example.com.'. Must end with a period. | `string` | n/a | yes |
+| enable\_hub\_and\_spoke\_transitivity | Enable transitivity by changing Network Connectivity Center topology on Hub-and-Spoke architecture from STAR to MESH. | `bool` | `false` | no |
+| remote\_state\_bucket | Backend bucket to load Terraform Remote State Data from previous steps. | `string` | n/a | yes |
+| tfc\_org\_name | Name of the TFC organization | `string` | `""` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| ncc\_hub\_uri | The NCC Hub ID |
+| ncc\_spoke\_group | The NCC group to be used by spokes |
+| network\_name | The name of the VPC being created |
+| network\_self\_link | The URI of the VPC being created |
+| shared\_vpc\_host\_project\_id | The shared vpc host project ID |
+| subnets\_ips | The IPs and CIDRs of the subnets being created |
+| subnets\_names | The names of the subnets being created |
+| subnets\_secondary\_ranges | The secondary ranges associated with these subnets |
+| subnets\_self\_links | The self-links of subnets being created |
+
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
