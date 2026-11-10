@@ -1,285 +1,83 @@
-# 2-environments
+# 2-security
 
-This repo is part of a multi-part guide that shows how to configure and deploy
-the example.com reference architecture described in
-[Google Cloud security foundations guide](https://cloud.google.com/architecture/security-foundations). The following table lists the parts of the guide.
+Controles de seguridad de la landing zone: llaves CMEK, Secret Manager, perímetro de VPC Service Controls, firewall jerárquico de la carpeta `ai-sandbox` y las políticas de organización que obligan a usar CMEK.
 
-<table>
-<tbody>
-<tr>
-<td><a href="../0-bootstrap">0-bootstrap</a></td>
-<td>Bootstraps a Google Cloud organization, creating all the required resources
-and permissions to start using the Cloud Foundation Toolkit (CFT). This
-step also configures a <a href="../docs/GLOSSARY.md#foundation-cicd-pipeline">CI/CD Pipeline</a> for foundations code in subsequent
-stages.</td>
-</tr>
-<tr>
-<td><a href="../1-org">1-org</a></td>
-<td>Sets up top level shared folders, networking projects, and
-organization-level logging, and sets baseline security settings through
-organizational policy.</td>
-</tr>
-<tr>
-<td><span style="white-space: nowrap;">2-environments</span> (this file)</td>
-<td>Sets up development, nonproduction, and production environments within the
-Google Cloud organization that you've created.</td>
-</tr>
-<tr>
-<td><a href="../3-networks-svpc">3-networks-svpc</a></td>
-<td>Sets shared VPCs with default DNS, NAT (optional),
-Private Service networking, VPC service controls, on-premises Dedicated
-Interconnect, and baseline firewall rules for each environment. It also sets
-up the global DNS hub.</td>
-</tr>
-<tr>
-<td><a href="../3-networks-hub-and-spoke">3-networks-hub-and-spoke</a></td>
-<td>Sets up shared VPCs with all the default configuration
-found on step 3-networks-svpc, but here the architecture will be based on the
-Hub and Spoke network model. It also sets up the global DNS hub</td>
-</tr>
-</tr>
-<tr>
-<td><a href="../4-projects">4-projects</a></td>
-<td>Sets up a folder structure, projects, and application infrastructure pipeline for applications,
- which are connected as service projects to the shared VPC created in the previous stage.</td>
-</tr>
-<tr>
-<td><a href="../5-app-infra">5-app-infra</a></td>
-<td>Deploy a simple <a href="https://cloud.google.com/compute/">Compute Engine</a> instance in one of the business unit projects using the infra pipeline set up in 4-projects.</td>
-</tr>
-</tbody>
-</table>
+> Igual que el resto del repo, esta etapa **no se despliega**. Solo se valida con `terraform validate` y `terraform test` con `mock_provider`.
 
-For an overview of the architecture and the parts, see the
-[terraform-example-foundation README](https://github.com/terraform-google-modules/terraform-example-foundation).
+## Qué crea
 
-## Purpose
+| Archivo | Recursos | Requisito del reto |
+|---|---|---|
+| `kms.tf` | Un key ring `<prefijo>-cmek` en `us-central1` y otro en `us-east4`, con una llave por servicio (`storage`, `bigquery`, `compute`, `aiplatform`, `artifactregistry`, `pubsub`, `dataflow`, `secretmanager`, `logging`), rotación cada 90 días | CMEK en todo |
+| `kms.tf` | `cryptoKeyEncrypterDecrypter` para los agentes de servicio de cada proyecto de IA sobre la llave de su servicio | CMEK en todo |
+| `secrets.tf` | Secretos `<prefijo>-vpn-psk` y `<prefijo>-huggingface-token`, replicados solo en la región principal y cifrados con la llave `secretmanager` | Secret Manager, sin secretos en código |
+| `vpc-sc.tf` | Perímetro `<prefijo>_aisbx` con los proyectos security, ai-platform, ai-data y net-hub; restringe Storage, BigQuery, Vertex AI y el resto de `servicios_restringidos`; desde la VPC solo se alcanzan servicios restringidos; solo las cuentas del pipeline entran desde fuera | Perímetro VPC-SC alrededor de IA y datos, 0 copias fuera del perímetro |
+| `firewall.tf` | Política de firewall jerárquica asociada a `ai-sandbox` | Firewall jerárquico, salida a Internet solo a dominios permitidos, sin rutas a producción |
+| `org-policies.tf` | `gcp.restrictNonCmekServices` y `gcp.restrictCmekCryptoKeyProjects` en `ai-sandbox` | 100 % de buckets, discos, BigQuery y Vertex AI con CMEK, verificado por política de organización |
 
-The purpose of this step is to setup development, nonproduction, and production environments within the Google Cloud organization that you've created.
+Los módulos están en [`modules/kms`](../../modules/kms), [`modules/vpc-sc`](../../modules/vpc-sc) y [`modules/firewall`](../../modules/firewall), cada uno con sus propias pruebas.
 
-## Prerequisites
+### Reglas del firewall jerárquico
 
-1. 0-bootstrap executed successfully.
-1. 1-org executed successfully.
+| Prioridad | Dirección | Acción | Qué |
+|---|---|---|---|
+| 100 | ingreso y egreso | deny | `rangos_produccion` (solo si la lista no está vacía) |
+| 200 | ingreso y egreso | deny | IPs maliciosas conocidas (Threat Intelligence) |
+| 1000 | ingreso y egreso | goto_next | Rangos internos (Shared VPC y on-premises por HA VPN); los decide el firewall de la VPC |
+| 1010 | ingreso | goto_next | IAP (`35.235.240.0/20`) en 22 y 3389 |
+| 1020 | ingreso | goto_next | Health checks de Google |
+| 1010 | egreso | allow | `restricted.googleapis.com` y `private.googleapis.com` en 443 |
+| 1020 | egreso | allow | `dominios_permitidos` (PyPI, Hugging Face, GitHub, Anaconda) en 443 |
+| 65000 | ingreso y egreso | deny | `0.0.0.0/0` |
 
-### Troubleshooting
+## Entradas
 
-Please refer to [troubleshooting](../docs/TROUBLESHOOTING.md) if you run into issues during this step.
+Los valores vienen de etapas anteriores; ver [`terraform.tfvars.example`](terraform.tfvars.example).
 
-## Assured Workloads
+| Variable | De dónde sale |
+|---|---|
+| `proyecto_seguridad` | Proyecto `security` de la carpeta `common` (1-org) |
+| `proyectos_ia` | Proyectos `ai-platform` y `ai-data` de la carpeta `ai-sandbox` (1-org) |
+| `proyectos_perimetro_extra` | Proyecto `net-hub` (1-org) |
+| `carpeta_ai_sandbox` | Carpeta `ai-sandbox` (1-org) |
+| `cuentas_pipeline` | Salida `cuentas_por_etapa` de 0-bootstrap |
+| `access_policy_id` | Access policy de la organización; si se deja en `null` se crea una (solo puede haber una por organización) |
 
-To enable [Assured Workloads](https://cloud.google.com/assured-workloads) in the production folder, edit the [main.tf](./envs/production/main.tf#L26) file and update `assured_workload_configuration.enable` to `true`.
+## Salidas para otras etapas
 
-See the `env_baseline` module [README.md](./modules/env_baseline/README.md) file for additional information on the values that can be configured for the Workload.
+- `llaves_cmek`: `llaves_cmek["us-central1"]["storage"]`, etc. Las etapas 3 a 5 deben usarlas en buckets, datasets, discos, Workbench, Vertex AI y Artifact Registry; la política de organización rechaza cualquier recurso de esos servicios sin CMEK.
+- `secretos`: 3-networks lee la PSK de la VPN con `google_secret_manager_secret_version` (la cuenta `sa-3-networks` debe estar en `lectores`).
+- `perimetro_vpc_sc`: 5-sandboxes agrega cada proyecto `aisbx-<equipo>` con `google_access_context_manager_service_perimeter_resource`. El perímetro ignora cambios en su lista de recursos para que esas altas no generen drift aquí.
 
-**Assured Workload is a paid service.**
-FedRAMP Moderate workloads can be deployed at no additional charge to Google Cloud products and service usage.
-For other compliance regimes, see [Assured Workloads pricing](https://cloud.google.com/assured-workloads/pricing).
-
-If you enable Assured Workloads, to delete the Assured workload, you will need to manually delete the resources under it.
-Use the [GCP console](https://console.cloud.google.com/compliance/assuredworkloads) to identify the resources to be deleted.
-
-## Usage
-
-- To deploy **only the production environment** (skipping development and nonproduction), only deploy `envs/production`. If you are using the `foundation-deployer` helper with `production_only_deploy = true`, the creation and execution of `development` and `nonproduction` branches are automatically omitted.
-
-- If you are using MacOS, replace `cp -RT` with `cp -R` in the relevant
-commands. The `-T` flag is needed for Linux, but causes problems for MacOS.
-
-### Deploying with Cloud Build
-
-1. Clone the `gcp-environments` repo based on the Terraform output from the `0-bootstrap` step.
-Clone the repo at the same level of the `terraform-example-foundation` folder, the following instructions assume this layout.
-Run `terraform output cloudbuild_project_id` in the `0-bootstrap` folder to get the Cloud Build Project ID.
-
-   ```bash
-   export CLOUD_BUILD_PROJECT_ID=$(terraform -chdir="terraform-example-foundation/0-bootstrap/" output -raw cloudbuild_project_id)
-   echo ${CLOUD_BUILD_PROJECT_ID}
-
-   gcloud source repos clone gcp-environments --project=${CLOUD_BUILD_PROJECT_ID}
-   ```
-
-1. Navigate into the repo, change to the non-main branch and copy contents of foundation to new repo.
-   All subsequent steps assume you are running them from the gcp-environments directory.
-   If you run them from another directory, adjust your copy paths accordingly.
-
-   ```bash
-   cd gcp-environments
-   git checkout -b plan
-
-   cp -RT ../terraform-example-foundation/2-environments/ .
-   cp ../terraform-example-foundation/build/cloudbuild-tf-* .
-   cp ../terraform-example-foundation/build/tf-wrapper.sh .
-   chmod 755 ./tf-wrapper.sh
-   ```
-
-1. Rename `terraform.example.tfvars` to `terraform.tfvars`.
-
-   ```bash
-   mv terraform.example.tfvars terraform.tfvars
-   ```
-
-1. Update the file with values from your environment and bootstrap (you can re-run `terraform output` in the 0-bootstrap directory to find these values). See any of the envs folder [README.md](./envs/production/README.md#inputs) files for additional information on the values in the `terraform.tfvars` file.
-
-   ```bash
-   export backend_bucket=$(terraform -chdir="../terraform-example-foundation/0-bootstrap/" output -raw gcs_bucket_tfstate)
-   echo "remote_state_bucket = ${backend_bucket}"
-
-   sed -i'' -e "s/REMOTE_STATE_BUCKET/${backend_bucket}/" terraform.tfvars
-   ```
-
-1. Commit changes.
-
-   ```bash
-   git add .
-   git commit -m 'Initialize environments repo'
-   ```
-
-1. Push your plan branch to trigger a plan for all environments. Because the
-   _plan_ branch is not a [named environment branch](../docs/FAQ.md#what-is-a-named-branch), pushing your _plan_
-   branch triggers _terraform plan_ but not _terraform apply_.
-
-   ```bash
-   git push --set-upstream origin plan
-   ```
-
-1. Review the plan output in your cloud build project https://console.cloud.google.com/cloud-build/builds;region=DEFAULT_REGION?project=YOUR_CLOUD_BUILD_PROJECT_ID
-1. Merge changes to development branch. Because this is a [named environment branch](../docs/FAQ.md#what-is-a-named-branch),
-   pushing to this branch triggers both _terraform plan_ and _terraform apply_.
-
-   ```bash
-   git checkout -b development
-   git push origin development
-   ```
-
-1. Review the apply output in your cloud build project https://console.cloud.google.com/cloud-build/builds;region=DEFAULT_REGION?project=YOUR_CLOUD_BUILD_PROJECT_ID
-1. Merge changes to nonproduction. Because this is a [named environment branch](../docs/FAQ.md#what-is-a-named-branch),
-   pushing to this branch triggers both _terraform plan_ and _terraform apply_. Review the apply output in your cloud build project https://console.cloud.google.com/cloud-build/builds;region=DEFAULT_REGION?project=YOUR_CLOUD_BUILD_PROJECT_ID
-
-   ```bash
-   git checkout -b nonproduction
-   git push origin nonproduction
-   ```
-
-1. Merge changes to production branch. Because this is a [named environment branch](../docs/FAQ.md#what-is-a-named-branch),
-   pushing to this branch triggers both _terraform plan_ and _terraform apply_. Review the apply output in your cloud build project https://console.cloud.google.com/cloud-build/builds;region=DEFAULT_REGION?project=YOUR_CLOUD_BUILD_PROJECT_ID
-
-   ```bash
-   git checkout -b production
-   git push origin production
-   ```
-
-1. You can now move to the instructions in the network step. To use the [Dual Shared VPC](https://cloud.google.com/architecture/security-foundations/networking#vpcsharedvpc-id7-1-shared-vpc-) network mode go to [3-networks-svpc](../3-networks-svpc/README.md), or go to [3-networks-hub-and-spoke](../3-networks-hub-and-spoke/README.md) to use the [Hub and Spoke](https://cloud.google.com/architecture/security-foundations/networking#hub-and-spoke) network mode.
-
-### Deploying with GitHub Actions
-
-See `0-bootstrap` [README-GitHub.md](../0-bootstrap/README-GitHub.md#deploying-step-2-environments).
-
-### Run Terraform locally
-
-1. The next instructions assume that you are at the same level of the `terraform-example-foundation` folder. Create the `gcp-environments` folder, copy the Terraform wrapper script and ensure it can be executed.
-
-   ```bash
-   mkdir gcp-environments
-   cp -R terraform-example-foundation/2-environments/* gcp-environments/
-   cp terraform-example-foundation/build/tf-wrapper.sh gcp-environments/
-   cp terraform-example-foundation/.gitignore gcp-environments/
-   chmod 755 ./gcp-environments/tf-wrapper.sh
-   ```
-
-1. Navigate to `gcp-environments` and initialize a local Git repository to manage versions locally. Then, create the environment branches.
-
-   ```bash
-   cd gcp-environments
-   git init
-   git commit -m "initialize empty directory" --allow-empty
-   git checkout -b production
-   git checkout -b nonproduction
-   git checkout -b development
-   ```
-
-1. Rename `terraform.example.tfvars` to `terraform.tfvars`.
-
-   ```bash
-   mv terraform.example.tfvars terraform.tfvars
-   ```
-
-1. Update the file with values from your environment and 0-bootstrap output.See any of the envs folder [README.md](./envs/production/README.md#inputs) files for additional information on the values in the `terraform.tfvars` file.
-1. Use `terraform output` to get the backend bucket value from 0-bootstrap output.
-
-   ```bash
-   export backend_bucket=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw gcs_bucket_tfstate)
-   echo "remote_state_bucket = ${backend_bucket}"
-
-   sed -i'' -e "s/REMOTE_STATE_BUCKET/${backend_bucket}/" ./terraform.tfvars
-   ```
-
-We will now deploy each of our environments(development/production/nonproduction) using this script.
-
-1. Use `terraform output` to get the Seed project ID and the organization step Terraform service account from gcp-bootstrap output. An environment variable `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` will be set using the Terraform Service Account to enable impersonation.
-
-   ```bash
-   export SEED_PROJECT_ID=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw seed_project_id)
-   echo ${SEED_PROJECT_ID}
-
-   export GOOGLE_IMPERSONATE_SERVICE_ACCOUNT=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw environment_step_terraform_service_account_email)
-   echo ${GOOGLE_IMPERSONATE_SERVICE_ACCOUNT}
-   ```
-
-1. Checkout `development` branch. Run `init` and `plan` and review output for environment development.
-
-   ```bash
-   git checkout development
-   ./tf-wrapper.sh init development
-   ./tf-wrapper.sh plan development
-   ```
-
-1. Run `apply` development and commit the initial version of `development` branch.
-
-   ```bash
-   ./tf-wrapper.sh apply development
-   git add .
-   git commit -m "Development initial commit."
-   ```
-
-1. Checkout `nonproduction` branch and merge `development` branch into it. Run `init` and `plan` and review output for environment nonproduction.
-
-   ```bash
-   git checkout nonproduction
-   git merge development
-   ./tf-wrapper.sh init nonproduction
-   ./tf-wrapper.sh plan nonproduction
-   ```
-
-1. Run `apply` production and commit initial version of nonproduction.
-
-   ```bash
-   ./tf-wrapper.sh apply nonproduction
-   git add .
-   git commit -m "Nonproduction initial commit."
-   ```
-
-1. Checkout `production` branch and merge `nonproduction` branch into it. Run `init` and `plan` and review output for environment production.
-
-   ```bash
-   git checkout production
-   git merge nonproduction
-   ./tf-wrapper.sh init production
-   ./tf-wrapper.sh plan production
-   ```
-
-1. Run `apply` production and commit initial version of production.
-
-   ```bash
-   ./tf-wrapper.sh apply production
-   git add .
-   git commit -m "Production initial commit."
-   ```
-
-If you received any errors or made any changes to the Terraform config or `terraform.tfvars` you must re-run `./tf-wrapper.sh plan <env>` before running `./tf-wrapper.sh apply <env>`.
-
-Before executing the next stages, unset the `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` environment variable.
+## Cómo probar
 
 ```bash
-unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+cd stages/2-security
+terraform init -backend=false
+terraform validate
+terraform test          # 14 passed, 0 failed
 ```
+
+Y los módulos:
+
+```bash
+cd modules/kms && terraform init -backend=false && terraform test       # 6 passed
+cd modules/vpc-sc && terraform init -backend=false && terraform test    # 8 passed
+cd modules/firewall && terraform init -backend=false && terraform test  # 5 passed
+```
+
+El backend es GCS con prefijo `2-security`, el mismo que permite la condición IAM de `sa-2-security` en el bucket de estado. El bucket se pasa al iniciar: `terraform init -backend-config="bucket=redesaura-tfstate"`.
+
+## Decisiones y supuestos
+
+El documento del reto no es consistente en algunos puntos; esto es lo que se asumió:
+
+- **Firewall jerárquico en 2-security.** La tabla de componentes lo pone en el dominio de Seguridad (módulo `firewall`), aunque el diagrama lo dibuja en el hub de red. Se dejó aquí; 3-networks solo administra las reglas de firewall de cada VPC. Por eso la cuenta `sa-2-security` ahora tiene `roles/compute.orgFirewallPolicyAdmin` en 0-bootstrap.
+- **Políticas de CMEK en 2-security.** Necesitan el ID del proyecto de llaves, así que se definen junto a KMS. La cuenta `sa-2-security` ahora tiene `roles/orgpolicy.policyAdmin`. El resto de políticas de organización (regiones, llaves de cuentas de servicio, etc.) siguen en 1-org.
+- **Proyectos creados por 1-org.** El reto pone `security` en `common` y `ai-platform`/`ai-data` en `ai-sandbox`, pero no dice qué etapa los crea. Se asume 1-org; esta etapa solo recibe sus IDs y números.
+- **Valores de los secretos fuera de Terraform.** Se crean los secretos vacíos y el valor se agrega con `gcloud secrets versions add`, para que no quede ni en el código ni en el estado.
+- **Agentes de servicio.** Los correos de los agentes se arman con el número de proyecto. Existen cuando la API correspondiente se habilita en el proyecto (4-ai-platform), así que esa etapa debe correr la primera vez antes de que los permisos de KMS se puedan aplicar en un despliegue real.
+- **Segunda región de KMS.** Una llave CMEK debe estar en la misma región que el recurso, y `us-east4` es la región alterna para GPU, por eso hay key ring en ambas.
+- **Enforced por defecto.** El criterio de aceptación pide que copiar datos fuera del perímetro falle. Para un primer despliegue real conviene `vpc_sc_modo_prueba = true`, revisar las violaciones en los logs y después pasarlo a `false`.
+- **Costo de NGFW.** Las reglas con FQDN y Threat Intelligence requieren Cloud NGFW Standard, que se cobra por GB inspeccionado. No aplica mientras no se despliegue.
+- **Sandboxes por equipo.** Sus agentes de servicio todavía no reciben permisos sobre las llaves; eso se resuelve con la fábrica de sandboxes en el sprint 5.

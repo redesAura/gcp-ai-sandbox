@@ -1,0 +1,40 @@
+org_id          = "123456789012"
+prefijo_empresa = "redesaura"
+region          = "us-central1"
+
+proyecto_seguridad = {
+  id     = "redesaura-security"
+  numero = "111111111111"
+}
+
+proyectos_ia = {
+  ai-platform = "222222222222"
+  ai-data     = "333333333333"
+}
+
+proyectos_perimetro_extra = {
+  net-hub = "444444444444"
+}
+
+carpeta_ai_sandbox = "folders/555555555555"
+
+cuentas_pipeline = {
+  "1-org"         = "sa-1-org@redesaura-seed.iam.gserviceaccount.com"
+  "2-security"    = "sa-2-security@redesaura-seed.iam.gserviceaccount.com"
+  "3-networks"    = "sa-3-networks@redesaura-seed.iam.gserviceaccount.com"
+  "4-ai-platform" = "sa-4-ai-platform@redesaura-seed.iam.gserviceaccount.com"
+  "5-sandboxes"   = "sa-5-sandboxes@redesaura-seed.iam.gserviceaccount.com"
+}
+
+secretos = {
+  vpn-psk = {
+    descripcion = "Llave precompartida del túnel HA VPN hacia on-premises"
+    lectores    = ["serviceAccount:sa-3-networks@redesaura-seed.iam.gserviceaccount.com"]
+  }
+  huggingface-token = {
+    descripcion = "Token de lectura de Hugging Face para descargar modelos abiertos"
+  }
+}
+
+vpc_sc_modo_prueba = false
+rangos_produccion  = []

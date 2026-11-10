@@ -13,7 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [stages/0-bootstrap]
+        dir:
+          - stages/0-bootstrap
+          - stages/2-security
+          - modules/kms
+          - modules/vpc-sc
+          - modules/firewall
     steps:
       - uses: actions/checkout@v4
 

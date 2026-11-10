@@ -15,19 +15,22 @@ gcp-ai-sandbox/
 ├── .tflint.hcl                   # configuración de tflint (plugin de reglas de Google 0.39.0)
 ├── docs/
 │   └── adr/                      # registros de decisiones de arquitectura (ADRs)
-├── modules/                      # módulos reutilizables de Terraform (sprints posteriores)
+├── modules/                      # módulos reutilizables de Terraform
+│   ├── firewall/                 # política de firewall jerárquica
+│   ├── kms/                      # key rings y llaves CMEK por región
+│   └── vpc-sc/                   # access policy, access level y perímetro de VPC-SC
 ├── policies/                     # políticas como código (sprints posteriores)
 ├── tests/                        # pruebas compartidas (sprints posteriores)
 └── stages/                       # cada etapa es una configuración de Terraform independiente
     ├── 0-bootstrap/              # proyecto semilla, bucket de estado, KMS, cuentas de servicio, WIF
     ├── 1-org/                    # carpetas y políticas de organización
-    ├── 2-security/               # KMS, Secret Manager, perímetros
+    ├── 2-security/               # CMEK, Secret Manager, VPC-SC, firewall jerárquico
     ├── 3-networks/               # Shared VPC hub-and-spoke
     ├── 4-ai-platform/            # Vertex AI y clúster GKE con GPU compartido
     └── 5-sandboxes/              # un sandbox por equipo (teams/)
 ```
 
-Cada etapa tiene su propio `versions.tf` (Terraform `>= 1.9.0, < 2.0.0`, proveedores `google` y `google-beta` `~> 6.0`) y su `.terraform.lock.hcl` versionado. Por ahora solo `0-bootstrap` tiene recursos y pruebas; las demás etapas se implementan en los siguientes sprints.
+Cada etapa tiene su propio `versions.tf` (Terraform `>= 1.9.0, < 2.0.0`, proveedores `google` y `google-beta` `~> 6.0`) y su `.terraform.lock.hcl` versionado. Por ahora `0-bootstrap` y `2-security` tienen recursos y pruebas; las demás etapas se implementan en los siguientes sprints. Los módulos de `modules/` tienen sus propias pruebas en `tests/`.
 
 Los recursos usan el prefijo `redesaura` (por ejemplo `redesaura-seed` y `redesaura-tfstate`). Va en minúsculas porque Google Cloud no acepta mayúsculas en IDs de proyecto ni nombres de bucket.
 
@@ -69,7 +72,7 @@ terraform providers lock -platform=darwin_arm64 -platform=darwin_amd64 -platform
 El workflow `.github/workflows/terraform-ci.yml` corre en cada pull request a `main`, sin secretos de Google:
 
 1. `terraform fmt -check -recursive`
-2. `terraform init -backend=false`, `validate` y `test` en cada etapa de la matriz (hoy: `stages/0-bootstrap`)
+2. `terraform init -backend=false`, `validate` y `test` en cada directorio de la matriz (hoy: `stages/0-bootstrap`, `stages/2-security`, `modules/kms`, `modules/vpc-sc` y `modules/firewall`)
 3. `tflint` sobre todo el repositorio
 4. `checkov` sobre todo el repositorio; los hallazgos que no aplican se justifican en el recurso con `#checkov:skip=<ID>:<razón>`
 
@@ -92,13 +95,13 @@ Después abre el pull request en GitHub, espera a que el pipeline esté en verde
 
 - Decisiones de arquitectura: [`docs/adr/`](docs/adr/)
 - Etapa de bootstrap: [`stages/0-bootstrap/`](stages/0-bootstrap/)
+- Etapa de seguridad: [`stages/2-security/`](stages/2-security/)
 
 ## Código de terceros
 
-Las etapas `1-org`, `2-security` y `3-networks` contienen código copiado **sin adaptar** de [terraform-example-foundation](https://github.com/terraform-google-modules/terraform-example-foundation) (Google LLC, licencia Apache-2.0), versión `v7.0.0`. Los encabezados de licencia originales se conservan en cada archivo. El origen exacto de cada archivo, la versión y el aviso de atribución están en:
+Las etapas `1-org` y `3-networks` contienen código copiado **sin adaptar** de [terraform-example-foundation](https://github.com/terraform-google-modules/terraform-example-foundation) (Google LLC, licencia Apache-2.0), versión `v7.0.0`. Los encabezados de licencia originales se conservan en cada archivo. El origen exacto de cada archivo, la versión y el aviso de atribución están en:
 
 - [`stages/1-org/TEMPLATE_SOURCE.md`](stages/1-org/TEMPLATE_SOURCE.md)
-- [`stages/2-security/TEMPLATE_SOURCE.md`](stages/2-security/TEMPLATE_SOURCE.md)
 - [`stages/3-networks/TEMPLATE_SOURCE.md`](stages/3-networks/TEMPLATE_SOURCE.md)
 
-Ese código todavía no está adaptado ni validado contra este repositorio; se adaptará en los siguientes pasos del sprint 2.
+Ese código todavía no está adaptado ni validado contra este repositorio; se adaptará en los siguientes pasos del sprint 2. La etapa `2-security` ya no usa la copia del template: se reemplazó por código propio.
