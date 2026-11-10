@@ -5,3 +5,7 @@ terraform {
     google-beta = { source = "hashicorp/google-beta", version = "~> 6.0" }
   }
 }
+
+provider "google" {
+  region = var.region
+}

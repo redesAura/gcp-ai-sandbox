@@ -1,0 +1,14 @@
+org_id          = "123456789012"
+billing_account = "ABCDEF-123456-ABCDEF"
+prefijo_empresa = "redesaura"
+region          = "us-central1"
+dominio         = "empresa.com"
+
+grupos = {
+  plataforma  = "gcp-plataforma@empresa.com"
+  seguridad   = "gcp-seguridad@empresa.com"
+  auditoria   = "gcp-auditoria@empresa.com"
+  facturacion = "gcp-facturacion@empresa.com"
+}
+
+# ids_cliente_permitidos = ["C0abc1234"]

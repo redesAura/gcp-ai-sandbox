@@ -1,331 +1,101 @@
 # 1-org
 
-This repo is part of a multi-part guide that shows how to configure and deploy
-the example.com reference architecture that is described in the
-[Google Cloud security foundations guide](https://cloud.google.com/architecture/security-foundations). The following table lists the parts of the guide.
+Esta etapa monta la estructura de la organización: las carpetas, los proyectos compartidos, las políticas de organización, los logs de auditoría, Security Command Center, los tags y los permisos de los grupos. Todo lo que viene después (redes, seguridad, la plataforma de IA y los sandboxes) se apoya en lo que se crea aquí.
 
-<table>
-<tbody>
-<tr>
-<td><a href="../0-bootstrap">0-bootstrap</a></td>
-<td>Bootstraps a Google Cloud organization, creating all the required resources
-and permissions to start using the Cloud Foundation Toolkit (CFT). This
-step also configures a <a href="../docs/GLOSSARY.md#foundation-cicd-pipeline">CI/CD Pipeline</a> for foundations code in subsequent
-stages.</td>
-</tr>
-<tr>
-<td>1-org (this file)</td>
-<td>Sets up top-level shared folders, networking projects, and
-organization-level logging, and sets baseline security settings through
-organizational policy.</td>
-</tr>
-<tr>
-<td><a href="../2-environments"><span style="white-space: nowrap;">2-environments</span></a></td>
-<td>Sets up development, nonproduction, and production environments within the
-Google Cloud organization that you've created.</td>
-</tr>
-<tr>
-<td><a href="../3-networks-svpc">3-networks-svpc</a></td>
-<td>Sets up shared VPCs with default DNS, NAT (optional),
-Private Service networking, VPC service controls, on-premises Dedicated
-Interconnect, and baseline firewall rules for each environment. It also sets
-up the global DNS hub.</td>
-</tr>
-<tr>
-<td><a href="../3-networks-hub-and-spoke">3-networks-hub-and-spoke</a></td>
-<td>Sets up shared VPCs with all the default configuration
-found on step 3-networks-svpc, but here the architecture will be based on the
-hub-and-spoke network model. It also sets up the global DNS hub.</td>
-</tr>
-</tr>
-<tr>
-<td><a href="../4-projects">4-projects</a></td>
-<td>Sets up a folder structure, projects, and application infrastructure pipeline for applications,
- which are connected as service projects to the shared VPC created in the previous stage.</td>
-</tr>
-<tr>
-<td><a href="../5-app-infra">5-app-infra</a></td>
-<td>Deploy a <a href="https://cloud.google.com/compute/">Compute Engine</a> instance in one of the business unit projects using the infra pipeline set up in 4-projects.</td>
-</tr>
-</tbody>
-</table>
+Se aplica con la cuenta `sa-1-org` que crea `0-bootstrap`, y el estado vive en `gs://redesaura-tfstate/1-org/`. El bucket se pasa al iniciar, igual que en `2-security`: `terraform init -backend-config="bucket=redesaura-tfstate"`.
 
-For an overview of the architecture and the parts, see the
-[terraform-example-foundation README](https://github.com/terraform-google-modules/terraform-example-foundation).
+## La jerarquía
 
-## Purpose
-
-- Set up top-level shared folders, networking projects, organization-level logging, and baseline security settings through organizational policies.
-- Set up VPC Service Controls.
-
-## Prerequisites
-
-1. Run 0-bootstrap.
-1. To enable Security Command Center notifications, choose a Security Command Center tier and create and grant permissions for the Security Command Center service account as described in [Setting up Security Command Center](https://cloud.google.com/security-command-center/docs/quickstart-security-command-center).
-
-### Troubleshooting
-
-See [troubleshooting](../docs/TROUBLESHOOTING.md) if you run into issues during this step.
-
-## Usage
-
-Consider the following:
-
-- This module creates a sink to export all logs to a Cloud Logging bucket. It also creates sinks to export a subset of security-related logs
-to Bigquery and Pub/Sub. This will result in additional charges for those copies of logs. For the log bucket destination, logs retained for the default retention period (30 days) [don't incur a storage cost](https://cloud.google.com/stackdriver/pricing#:~:text=Logs%20retained%20for%20the%20default%20retention%20period%20don%27t%20incur%20a%20storage%20cost.).
-  You can change the filters and sinks by modifying the configuration in `envs/shared/log_sinks.tf`.
-
-- This module implements but does not enable [bucket policy retention](https://cloud.google.com/storage/docs/bucket-lock) for organization logs. If needed, enable a retention policy by configuring the `log_export_storage_retention_policy` variable.
-
-- This module implements but does not enable [object versioning](https://cloud.google.com/storage/docs/object-versioning) for organization logs. If needed, enable object versioning by setting the `log_export_storage_versioning` variable to true.
-
-- Bucket policy retention and object versioning are **mutually exclusive**.
-
-- To use the **hub-and-spoke** architecture described in the **Networking** section of the [Google Cloud security foundations guide](https://cloud.google.com/architecture/security-foundations/networking#hub-and-spoke), set the `enable_hub_and_spoke` variable to `true`.
-
-- To deploy **only the production environment** (skipping development and nonproduction), set the `production_only_deploy` variable to `true` (or configure `production_only_deploy = true` in `global.tfvars` when using the `foundation-deployer` helper). This restricts the creation of Shared VPC host projects to only the production environment project e.g. `prj-p-svpc` .
-
-- If you are using MacOS, replace `cp -RT` with `cp -R` in the relevant
-commands. The `-T` flag is required for Linux, but causes problems for MacOS.
-
-- This module manages contacts for notifications using [Essential Contacts](https://cloud.google.com/resource-manager/docs/managing-notification-contacts). Essential Contacts are assigned at the parent (organization or folder) that you configure to be inherited by all child resources. You can also assign Essential Contacts directly to projects using the project-factory [essential_contacts submodule](https://registry.terraform.io/modules/terraform-google-modules/project-factory/google/13.1.0/submodules/essential_contacts#example-usage). Billing notifications are sent to the `group_billing_admins` mandatory group. Legal and suspension notifications are sent to the `group_org_admins` mandatory group. If you provide all other groups, notifications are configured as described in the following table.
-
-| Group | Notification Category | Fallback Group |
-|-------|-----------------------|----------------|
-| gcp_network_viewer | Technical | Org Admins |
-| gcp_platform_viewer | Product updates and technical | Org Admins |
-| gcp_scc_admin | Product updates and security | Org Admins |
-| gcp_security_reviewer | Security and technical | Org Admins |
-
-This module creates and applies [tags](https://cloud.google.com/resource-manager/docs/tags/tags-overview) to common, network, and bootstrap folders. These tags are also applied to environment folders of step [2-environments](../2-environments/README.md). You can create your own tags by editing the `local.tags` map in `tags.tf` and following the commented template. The following table describes details about the tags that are applied to resources:
-
-| Resource | Type | Step | Tag Key | Tag Value |
-|----------|------|------|---------|-----------|
-| bootstrap | folder | 1-org | environment | bootstrap |
-| common | folder | 1-org | environment | production |
-| network | folder | 1-org | environment | production |
-| enviroment development | folder | [2-environments](../2-environments/README.md) | environment | development |
-| enviroment nonproduction | folder | [2-environments](../2-environments/README.md) | environment | nonproduction |
-| enviroment production | folder | [2-environments](../2-environments/README.md) | environment | production |
-
-### Deploying with Cloud Build
-
-1. Clone the `gcp-org` repo based on the Terraform output from the `0-bootstrap` step.
-Clone the repo at the same level of the `terraform-example-foundation` folder.
-If required, run `terraform output cloudbuild_project_id` in the `0-bootstrap` folder to get the Cloud Build Project ID.
-
-   ```bash
-   export CLOUD_BUILD_PROJECT_ID=$(terraform -chdir="terraform-example-foundation/0-bootstrap/" output -raw cloudbuild_project_id)
-   echo ${CLOUD_BUILD_PROJECT_ID}
-
-   gcloud source repos clone gcp-org --project=${CLOUD_BUILD_PROJECT_ID}
-   ```
-
-   **Note:** The message `warning: You appear to have cloned an empty repository.` is
-   normal and can be ignored.
-
-1. Navigate into the repo, change to a nonproduction branch, and copy the contents of foundation to the new repo.
-   All subsequent steps assume you are running them from the `gcp-org` directory.
-   If you run them from another directory, adjust your copy paths accordingly.
-
-   ```bash
-   cd gcp-org
-   git checkout -b plan
-
-   cp -RT ../terraform-example-foundation/1-org/ .
-   cp ../terraform-example-foundation/build/cloudbuild-tf-* .
-   cp ../terraform-example-foundation/build/tf-wrapper.sh .
-   chmod 755 ./tf-wrapper.sh
-   ```
-
-1. Rename `./envs/shared/terraform.example.tfvars` to `./envs/shared/terraform.tfvars`
-
-   ```bash
-   mv ./envs/shared/terraform.example.tfvars ./envs/shared/terraform.tfvars
-   ```
-
-1. Check if a Security Command Center notification with the default name, **scc-notify**, already exists. If it exists, choose a different value for the `scc_notification_name` variable in the `./envs/shared/terraform.tfvars` file.
-
-   ```bash
-   export ORGANIZATION_ID=$(terraform -chdir="../terraform-example-foundation/0-bootstrap/" output -json common_config | jq '.org_id' --raw-output)
-   gcloud scc notifications describe "scc-notify" --organization=${ORGANIZATION_ID} --location=global
-   ```
-
-1. Check if your organization already has an Access Context Manager policy.
-
-   ```bash
-   export ACCESS_CONTEXT_MANAGER_ID=$(gcloud access-context-manager policies list --organization ${ORGANIZATION_ID} --format="value(name)")
-   echo "access_context_manager_policy_id = ${ACCESS_CONTEXT_MANAGER_ID}"
-   ```
-
-1. Update `envs/shared/terraform.tfvars` file with the `access_context_manager_policy_id`.
-
-   ```bash
-   sed -i'' -e "s/ACCESS_CONTEXT_MANAGER_ID/${ACCESS_CONTEXT_MANAGER_ID}/" ./envs/shared/terraform.tfvars
-   ```
-
-1. Update the `envs/shared/terraform.tfvars` file with values from your environment and 0-bootstrap step. If the previous step showed a numeric value, un-comment the variable `create_access_context_manager_access_policy = false`. See the shared folder [README.md](./envs/shared/README.md) for additional information on the values in the `terraform.tfvars` file.
-
-   ```bash
-   export backend_bucket=$(terraform -chdir="../terraform-example-foundation/0-bootstrap/" output -raw gcs_bucket_tfstate)
-   echo "remote_state_bucket = ${backend_bucket}"
-
-   sed -i'' -e "s/REMOTE_STATE_BUCKET/${backend_bucket}/" ./envs/shared/terraform.tfvars
-
-   if [ ! -z "${ACCESS_CONTEXT_MANAGER_ID}" ]; then sed -i'' -e "s=//create_access_context_manager_access_policy=create_access_context_manager_access_policy=" ./envs/shared/terraform.tfvars; fi
-   ```
-
-1. Run `terraform init` in `/envs/shared` to generate the outputs used in other steps.
-
-   ```bash
-   cd envs/shared
-   terraform init
-   cd ../..
-   ```
-
-1. Commit changes.
-
-   ```bash
-   git add .
-   git commit -m 'Initialize org repo'
-   ```
-
-1. Push your plan branch to trigger a plan for all environments. Because the
-   _plan_ branch is not a [named environment branch](../docs/FAQ.md#what-is-a-named-branch), pushing your _plan_
-   branch triggers _terraform plan_ but not _terraform apply_. Review the plan output in your Cloud Build project.
-
-   ```bash
-   git push --set-upstream origin plan
-   ```
-
-1. Merge changes to the production branch. Because the _production_ branch is a [named environment branch](../docs/FAQ.md#what-is-a-named-branch),
-   pushing to this branch triggers both _terraform plan_ and _terraform apply_. Review the apply output in your Cloud Build project.
-
-   ```bash
-   git checkout -b production
-   git push origin production
-   ```
-
-1. Proceed to the [2-environments](../2-environments/README.md) step.
-
-**Troubleshooting:**
-If you received a `PERMISSION_DENIED` error while running the `gcloud access-context-manager` or the `gcloud scc notifications` commands, you can append the following to run the command as the Terraform service account:
-
-```bash
---impersonate-service-account=$(terraform -chdir="../terraform-example-foundation/0-bootstrap/" output -raw organization_step_terraform_service_account_email)
+```
+organización
+├── bootstrap/     redesaura-seed (de 0-bootstrap)
+├── common/        redesaura-net-hub, redesaura-logging, redesaura-security
+└── ai-sandbox/    ai-platform, ai-data y los aisbx-<equipo>
 ```
 
-### Deploying with GitHub Actions
+Los tres proyectos de `common` se crean aquí, vacíos y con las APIs ya activadas, para que las siguientes etapas solo tengan que llenarlos:
 
-See `0-bootstrap` [README-GitHub.md](../0-bootstrap/README-GitHub.md#deploying-step-1-org).
+- `redesaura-net-hub`: la Shared VPC, Cloud NAT, DNS y la VPN. Lo usa `3-networks`.
+- `redesaura-logging`: el bucket de auditoría y el dataset de facturación. Los usa esta misma etapa.
+- `redesaura-security`: KMS, Secret Manager, VPC-SC y el tópico de SCC. Lo usa `2-security` (y esta etapa, para el tópico).
 
-### Running Terraform locally
+Los proyectos de `ai-sandbox` no se crean aquí: `ai-platform` y `ai-data` salen de `4-ai-platform`, y los de cada equipo, de `5-sandboxes`.
 
-1. The next instructions assume that you are at the same level of the `terraform-example-foundation` folder.
-Create `gcp-org` folder, copy `1-org` content and Terraform wrapper script; ensure it can be executed.
+## Políticas de organización
 
-   ```bash
-   mkdir gcp-org
-   cp -R terraform-example-foundation/1-org/* gcp-org/
-   cp terraform-example-foundation/build/tf-wrapper.sh gcp-org/
-   cp terraform-example-foundation/.gitignore gcp-org/
-   cd gcp-org
-   chmod 755 ./tf-wrapper.sh
-   ```
+La idea general es cerrar por defecto lo que suele salir mal en una organización nueva. A nivel organización:
 
-1. Initialize a local Git repository to manage versions locally. Then, create the environment branches.
+- Solo se pueden crear recursos en `us-central1` y `us-east4`.
+- No hay llaves de cuentas de servicio; el pipeline entra con Workload Identity Federation.
+- Las cuentas de servicio default ya no reciben Editor automáticamente.
+- Ninguna VM ni Cloud SQL puede tener IP pública, y los proyectos nuevos nacen sin la red default.
+- Compute queda endurecido: OS Login obligatorio, sin puerto serial, sin virtualización anidada, sin IPv6 externa y forwarding solo interno.
+- Los buckets usan acceso uniforme y nunca pueden ser públicos.
+- Los contactos esenciales, y si se define `ids_cliente_permitidos`, cualquier identidad en IAM, tienen que ser del dominio de la empresa.
 
-   ```bash
-      git init
-      git commit -m "initialize empty directory" --allow-empty
-      git checkout -b plan
-      git checkout -b production
-   ```
+La carpeta `ai-sandbox` tiene tres reglas extra, porque ahí es donde los equipos trabajan con datos:
 
-1. Rename `./envs/shared/terraform.example.tfvars` to `./envs/shared/terraform.tfvars`.
+- Vertex AI, BigQuery, Storage, discos, GKE, Workbench, Artifact Registry, Pub/Sub, Dataflow y Secret Manager solo aceptan recursos cifrados con CMEK. La lista (`servicios_cmek_obligatorio`) coincide con las llaves que crea `2-security`.
+- Esas llaves solo pueden venir de `redesaura-security`.
+- Los proyectos solo pueden conectarse a una Shared VPC de `common` o de `ai-sandbox`, nunca a una red de producción.
 
-   ```bash
-   mv ./envs/shared/terraform.example.tfvars ./envs/shared/terraform.tfvars
-   ```
+La lista completa de constraints está en [`org_policies.tf`](org_policies.tf).
 
-1. Check if a Security Command Center notification with the default name, **scc-notify**, already exists. If it exists, choose a different value for the `scc_notification_name` variable in the `./envs/shared/terraform.tfvars` file.
+## Logs y SCC
 
-   ```bash
-   export ORGANIZATION_ID=$(terraform -chdir="../gcp-bootstrap/envs/shared" output -json common_config | jq '.org_id' --raw-output)
-   gcloud scc notifications describe "scc-notify" --organization=${ORGANIZATION_ID} --location=global
-   ```
+Se activan los logs de auditoría (Admin Read, Data Read y Data Write) para todos los servicios. Un sink a nivel organización junta auditoría, VPC Flow Logs, firewall y consultas DNS de todos los proyectos en el bucket `auditoria-org` del proyecto de logging, con Log Analytics y 400 días de retención.
 
-1. Check if your organization already has an Access Context Manager policy.
+En el mismo proyecto queda el dataset `facturacion`, que es de donde lee el tablero de costos de `cost-guard`.
 
-   ```bash
-   export ACCESS_CONTEXT_MANAGER_ID=$(gcloud access-context-manager policies list --organization ${ORGANIZATION_ID} --format="value(name)")
-   echo "access_context_manager_policy_id = ${ACCESS_CONTEXT_MANAGER_ID}"
-   ```
+Los hallazgos activos de Security Command Center se publican en el tópico `scc-hallazgos` del proyecto de seguridad.
 
-1. Update `envs/shared/terraform.tfvars` file with the `access_context_manager_policy_id`.
+## Quién puede hacer qué
 
-   ```bash
-   sed -i'' -e "s/ACCESS_CONTEXT_MANAGER_ID/${ACCESS_CONTEXT_MANAGER_ID}/" ./envs/shared/terraform.tfvars
-   ```
+Los grupos de Cloud Identity se crean a mano y se pasan en la variable `grupos`:
 
-1. Update the `envs/shared/terraform.tfvars` file with values from your environment and `gcp-bootstrap` step. If the previous step showed a numeric value, un-comment the variable `create_access_context_manager_access_policy = false`. See the shared folder [README.md](./envs/shared/README.md) for additional information on the values in the `terraform.tfvars` file.
+- **plataforma** puede ver la organización, las políticas, el IAM y los logs, pero no toca los datos de los equipos. Los cambios a la base se hacen solo desde el pipeline.
+- **seguridad** tiene revisor de seguridad, SCC en lectura y acceso a los logs de data access.
+- **auditoria** puede leer y consultar los logs del proyecto de logging.
+- **facturacion** puede ver la facturación y el dataset `facturacion`.
 
-   ```bash
-   export backend_bucket=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw gcs_bucket_tfstate)
-   echo "remote_state_bucket = ${backend_bucket}"
+Los permisos dentro de cada sandbox (científico de datos, ingeniero ML, líder de equipo y revisor) se definen aquí en el output `roles_por_perfil`, pero los asigna `5-sandboxes`. Ningún perfil puede modificar IAM ni crear redes.
 
-   sed -i'' -e "s/REMOTE_STATE_BUCKET/${backend_bucket}/" ./envs/shared/terraform.tfvars
+## Tags
 
-   if [ ! -z "${ACCESS_CONTEXT_MANAGER_ID}" ]; then sed -i'' -e "s=//create_access_context_manager_access_policy=create_access_context_manager_access_policy=" ./envs/shared/terraform.tfvars; fi
-   ```
+Hay dos tags. `entorno` (`common` o `ai-sandbox`) se pone en cada carpeta y sirve para escribir condiciones de IAM y de políticas. `sensibilidad` (`baja`, `media`, `alta`) es para clasificar los datasets y buckets del `data-lake`.
 
-You can now deploy your environment (production) using this script.
+## Cómo aplicarla
 
-1. Use `terraform output` to get the Seed project ID and the organization step Terraform service account from gcp-bootstrap output. An environment variable `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` will be set using the Terraform Service Account to enable impersonation.
+Antes de correr Terraform hay que:
 
-   ```bash
-   export SEED_PROJECT_ID=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw seed_project_id)
-   echo ${SEED_PROJECT_ID}
+1. Crear los grupos de Cloud Identity.
+2. Activar Security Command Center (nivel Standard) en la organización.
 
-   export GOOGLE_IMPERSONATE_SERVICE_ACCOUNT=$(terraform -chdir="../gcp-bootstrap/envs/shared/" output -raw organization_step_terraform_service_account_email)
-   echo ${GOOGLE_IMPERSONATE_SERVICE_ACCOUNT}
-   ```
+Luego copia [`terraform.tfvars.example`](terraform.tfvars.example) a `terraform.tfvars` y llena al menos `org_id`, `billing_account`, `prefijo_empresa`, `dominio` y `grupos`. El resto tiene defaults razonables; revisa [`variables.tf`](variables.tf) si necesitas cambiar algo.
 
-1. Run `init` and `plan` and review the output.
+Después del primer apply, falta un paso manual: en la consola de Billing, apuntar la exportación de facturación al dataset `facturacion`.
 
-   ```bash
-   git checkout plan
-   ./tf-wrapper.sh init production
-   ./tf-wrapper.sh plan production
-   ```
-
-1. Commit validated code in plan branch.
-
-   ```bash
-   git add .
-   git commit -m "Initial version of gcp-org."
-   ```
-
-1. Checkout `production` branch and merge plan into it. Run `apply production`.
-
-   ```bash
-   git checkout production
-   git merge plan
-   ./tf-wrapper.sh apply production
-   ```
-
-If you receive any errors or made any changes to the Terraform config or `terraform.tfvars`, re-run `./tf-wrapper.sh plan production` before you run `./tf-wrapper.sh apply production`.
-
-Before executing the next stages, unset the `GOOGLE_IMPERSONATE_SERVICE_ACCOUNT` environment variable.
+Para validar sin tocar GCP:
 
 ```bash
-unset GOOGLE_IMPERSONATE_SERVICE_ACCOUNT
+cd stages/1-org
+terraform init -backend=false
+terraform validate
+terraform test
 ```
 
-### (Optional) Enforce VPC Service Controls
+Las pruebas usan `mock_provider`, así que corren sin credenciales.
 
-Because enabling VPC Service Controls can be a disruptive process, this repo configures VPC Service Controls perimeters in dry run mode by default. This configuration will service traffic that crosses the security perimeter (API requests that originate from inside your perimeter communicating with external resources, or API requests from external resources communicating with resources inside your perimeter) but still allow service traffic normally.
+## Cosas que no están aquí (a propósito)
 
-When you are ready to enforce VPC Service Controls, we recommend that you review the guidance at [Best practices for enabling VPC Service Controls](https://cloud.google.com/vpc-service-controls/docs/enable). After you have added the necessary exceptions and are confident that VPC Service Controls will not disrupt your intended operations, set the variable `enforce_vpcsc` under the module `service_control` to `true` and re-apply this stage. Then re-apply the 2-environments and 4-projects stage, which will inherit the new setting and include those projects inside the enforced perimeter.
+- **CMEK en `common`.** El bucket de logs, el dataset de facturación y el tópico de SCC se crean antes que las llaves de `2-security`, así que por ahora usan cifrado de Google. Se pueden migrar a CMEK después.
+- **Modelos permitidos de Model Garden.** `vertexai.allowedModels` lo maneja el módulo `vertex-models`, junto con su lista `allowed_models`.
+- **VPC Service Controls y firewall jerárquico.** El perímetro y la política de firewall jerárquica de `ai-sandbox` los crea `2-security`; `3-networks` solo administra las reglas de cada VPC.
 
-When you need to make changes to an existing enforced perimeter, you can test safely by modifying the configuration of the [dry run perimeter](https://cloud.google.com/vpc-service-controls/docs/dry-run-mode). This will log traffic denied by the dry run perimeter without impacting whether the enforced perimeter allows or denies traffic.
+## Salidas para otras etapas
+
+- `carpetas`: `2-security` usa `carpetas.ai_sandbox` como `carpeta_ai_sandbox`.
+- `proyectos` y `numeros_de_proyecto`: `2-security` arma `proyecto_seguridad` con el id y el número de `security`, y pasa el número de `net-hub` en `proyectos_perimetro_extra`.
+- `roles_por_perfil`: lo usa `5-sandboxes`.
+
+El razonamiento detrás de la jerarquía y las políticas está en el [ADR 0002](../../docs/adr/0002-jerarquia-y-politicas-de-organizacion.md). Parte del código está adaptado de [terraform-example-foundation](https://github.com/terraform-google-modules/terraform-example-foundation) (ver [la licencia](LICENSE-terraform-example-foundation.txt)).
