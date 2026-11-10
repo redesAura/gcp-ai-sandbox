@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [stages/0-bootstrap]
+        dir: [stages/0-bootstrap, stages/1-org]
     steps:
       - uses: actions/checkout@v4
 
