@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Modificado por redesAura (gcp-ai-sandbox) para el plan de red del reto.
+
 locals {
   interconnect_project_id      = data.terraform_remote_state.org.outputs.interconnect_project_id
   interconnect_project_number  = data.terraform_remote_state.org.outputs.interconnect_project_number
@@ -21,8 +23,8 @@ locals {
   org_id                       = data.terraform_remote_state.bootstrap.outputs.common_config.org_id
   billing_account              = data.terraform_remote_state.bootstrap.outputs.common_config.billing_account
   default_region               = data.terraform_remote_state.bootstrap.outputs.common_config.default_region
-  default_region1              = data.terraform_remote_state.bootstrap.outputs.common_config.default_region
-  default_region2              = data.terraform_remote_state.bootstrap.outputs.common_config.default_region_2
+  default_region1              = "us-central1"
+  default_region2              = "us-east4"
   project_prefix               = data.terraform_remote_state.bootstrap.outputs.common_config.project_prefix
   folder_prefix                = data.terraform_remote_state.bootstrap.outputs.common_config.folder_prefix
   parent_id                    = data.terraform_remote_state.bootstrap.outputs.common_config.parent_id

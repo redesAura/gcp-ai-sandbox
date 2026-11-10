@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
+// EJEMPLO PENDIENTE: sustituir por resolutores on-prem reales alcanzables por HA VPN.
+// 172.16.0.53 y .54 son marcadores, no valores confirmados.
 // List of IPv4 address of target name servers for the forwarding zone configuration.
 // See https://cloud.google.com/dns/docs/overview#dns-forwarding-zones
 target_name_server_addresses = [
   {
-    ipv4_address    = "192.168.0.1",
+    ipv4_address    = "172.16.0.53",
     forwarding_path = "default"
   },
   {
-    ipv4_address    = "192.168.0.2",
+    ipv4_address    = "172.16.0.54",
     forwarding_path = "default"
   }
 ]

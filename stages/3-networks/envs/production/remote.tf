@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+// Modificado por redesAura (gcp-ai-sandbox) para el plan de red del reto.
+
 locals {
-  default_region1 = data.terraform_remote_state.bootstrap.outputs.common_config.default_region
-  default_region2 = data.terraform_remote_state.bootstrap.outputs.common_config.default_region_2
+  default_region1 = "us-central1"
+  default_region2 = "us-east4"
 }
 
 data "terraform_remote_state" "bootstrap" {

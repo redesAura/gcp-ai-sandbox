@@ -14,28 +14,40 @@
  * limitations under the License.
  */
 
+// Modificado por redesAura (gcp-ai-sandbox) para el plan de red del reto.
+
 locals {
   env              = "production"
   environment_code = substr(local.env, 0, 1)
 
-  private_service_cidr = "10.16.56.0/21"
+  private_service_cidr = "10.10.16.0/20"
   subnet_primary_ranges = {
-    (local.default_region1) = "10.8.192.0/18"
-    (local.default_region2) = "10.9.192.0/18"
+    (local.default_region1) = "10.10.32.0/22"
+    (local.default_region2) = "10.20.32.0/22"
   }
   subnet_proxy_ranges = {
-    (local.default_region1) = "10.26.6.0/23"
-    (local.default_region2) = "10.27.6.0/23"
+    (local.default_region1) = "10.10.48.0/23"
+    (local.default_region2) = "10.20.48.0/23"
   }
   subnet_secondary_ranges = {
     (local.default_region1) = [
       {
-        range_name    = "rn-${local.environment_code}-svpc-${local.default_region1}-gke-pod"
-        ip_cidr_range = "100.72.192.0/18"
+        range_name    = "gke-pods-usc1"
+        ip_cidr_range = "10.10.64.0/19"
       },
       {
-        range_name    = "rn-${local.environment_code}-svpc-${local.default_region1}-gke-svc"
-        ip_cidr_range = "100.73.192.0/18"
+        range_name    = "gke-services-usc1"
+        ip_cidr_range = "10.10.36.0/22"
+      }
+    ],
+    (local.default_region2) = [
+      {
+        range_name    = "gke-pods-use4"
+        ip_cidr_range = "10.20.64.0/20"
+      },
+      {
+        range_name    = "gke-services-use4"
+        ip_cidr_range = "10.20.36.0/22"
       }
     ]
   }
@@ -55,7 +67,7 @@ module "base_env" {
   subnet_primary_ranges             = local.subnet_primary_ranges
   subnet_proxy_ranges               = local.subnet_proxy_ranges
   subnet_secondary_ranges           = local.subnet_secondary_ranges
-  private_service_connect_ip        = "10.17.0.8"
+  private_service_connect_ip        = "10.255.255.10"
   remote_state_bucket               = var.remote_state_bucket
   tfc_org_name                      = var.tfc_org_name
 }

@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+// Modificado por redesAura (gcp-ai-sandbox) para el plan de red del reto.
+
 locals {
   bgp_asn_number      = var.enable_partner_interconnect ? "16550" : "64514"
   enable_transitivity = var.enable_hub_and_spoke_transitivity
 
-  subnet_aggregates = ["10.8.0.0/18", "10.9.0.0/18", "100.72.0.0/18", "100.73.0.0/18"]
-  hub_subnet_ranges = ["10.8.0.0/24", "10.9.0.0/24"]
+  subnet_aggregates = ["10.10.32.0/22", "10.20.32.0/22", "10.10.64.0/19", "10.10.36.0/22", "10.20.64.0/20", "10.20.36.0/22"]
+  hub_subnet_ranges = ["10.10.0.0/24", "10.20.0.0/24"]
 }
 
 
@@ -58,7 +60,7 @@ module "shared_vpc" {
 
   subnets = [
     {
-      subnet_name                      = "sb-${var.environment_code}-svpc-${var.default_region1}"
+      subnet_name                      = "snet-ai-platform-usc1"
       subnet_ip                        = var.subnet_primary_ranges[var.default_region1]
       subnet_region                    = var.default_region1
       subnet_private_access            = "true"
@@ -71,7 +73,7 @@ module "shared_vpc" {
       description                      = "First ${var.env} subnet example."
     },
     {
-      subnet_name                      = "sb-${var.environment_code}-svpc-${var.default_region2}"
+      subnet_name                      = "snet-ai-platform-use4"
       subnet_ip                        = var.subnet_primary_ranges[var.default_region2]
       subnet_region                    = var.default_region2
       subnet_private_access            = "true"
@@ -81,10 +83,62 @@ module "shared_vpc" {
       subnet_flow_logs_metadata        = var.vpc_flow_logs.metadata
       subnet_flow_logs_metadata_fields = var.vpc_flow_logs.metadata_fields
       subnet_flow_logs_filter          = var.vpc_flow_logs.filter_expr
-      description                      = "Second ${var.env} subnet example."
+      description                      = "AI platform nodes in ${var.default_region2}."
     },
     {
-      subnet_name           = "sb-${var.environment_code}-svpc-${var.default_region1}-proxy"
+      subnet_name                      = "snet-ai-data-usc1"
+      subnet_ip                        = "10.10.44.0/24"
+      subnet_region                    = "us-central1"
+      subnet_private_access            = "true"
+      subnet_flow_logs                 = true
+      subnet_flow_logs_interval        = var.vpc_flow_logs.aggregation_interval
+      subnet_flow_logs_sampling        = var.vpc_flow_logs.flow_sampling
+      subnet_flow_logs_metadata        = var.vpc_flow_logs.metadata
+      subnet_flow_logs_metadata_fields = var.vpc_flow_logs.metadata_fields
+      subnet_flow_logs_filter          = var.vpc_flow_logs.filter_expr
+      description                      = "AI data and Dataflow workers."
+    },
+    {
+      subnet_name                      = "snet-aisbx-01"
+      subnet_ip                        = "10.10.128.0/22"
+      subnet_region                    = "us-central1"
+      subnet_private_access            = "true"
+      subnet_flow_logs                 = true
+      subnet_flow_logs_interval        = var.vpc_flow_logs.aggregation_interval
+      subnet_flow_logs_sampling        = var.vpc_flow_logs.flow_sampling
+      subnet_flow_logs_metadata        = var.vpc_flow_logs.metadata
+      subnet_flow_logs_metadata_fields = var.vpc_flow_logs.metadata_fields
+      subnet_flow_logs_filter          = var.vpc_flow_logs.filter_expr
+      description                      = "AI sandbox for team 1."
+    },
+    {
+      subnet_name                      = "snet-aisbx-02"
+      subnet_ip                        = "10.10.132.0/22"
+      subnet_region                    = "us-central1"
+      subnet_private_access            = "true"
+      subnet_flow_logs                 = true
+      subnet_flow_logs_interval        = var.vpc_flow_logs.aggregation_interval
+      subnet_flow_logs_sampling        = var.vpc_flow_logs.flow_sampling
+      subnet_flow_logs_metadata        = var.vpc_flow_logs.metadata
+      subnet_flow_logs_metadata_fields = var.vpc_flow_logs.metadata_fields
+      subnet_flow_logs_filter          = var.vpc_flow_logs.filter_expr
+      description                      = "AI sandbox for team 2."
+    },
+    {
+      subnet_name                      = "snet-aisbx-03"
+      subnet_ip                        = "10.10.136.0/22"
+      subnet_region                    = "us-central1"
+      subnet_private_access            = "true"
+      subnet_flow_logs                 = true
+      subnet_flow_logs_interval        = var.vpc_flow_logs.aggregation_interval
+      subnet_flow_logs_sampling        = var.vpc_flow_logs.flow_sampling
+      subnet_flow_logs_metadata        = var.vpc_flow_logs.metadata
+      subnet_flow_logs_metadata_fields = var.vpc_flow_logs.metadata_fields
+      subnet_flow_logs_filter          = var.vpc_flow_logs.filter_expr
+      description                      = "AI sandbox for team 3."
+    },
+    {
+      subnet_name           = "snet-ai-platform-usc1-proxy"
       subnet_ip             = var.subnet_proxy_ranges[var.default_region1]
       subnet_region         = var.default_region1
       subnet_private_access = "false"
@@ -94,7 +148,7 @@ module "shared_vpc" {
       purpose               = "REGIONAL_MANAGED_PROXY"
     },
     {
-      subnet_name           = "sb-${var.environment_code}-svpc-${var.default_region2}-proxy"
+      subnet_name           = "snet-ai-platform-use4-proxy"
       subnet_ip             = var.subnet_proxy_ranges[var.default_region2]
       subnet_region         = var.default_region2
       subnet_private_access = "false"
@@ -105,6 +159,7 @@ module "shared_vpc" {
     }
   ]
   secondary_ranges = {
-    "sb-${var.environment_code}-svpc-${var.default_region1}" = var.subnet_secondary_ranges[var.default_region1]
+    "snet-ai-platform-usc1" = var.subnet_secondary_ranges[var.default_region1]
+    "snet-ai-platform-use4" = var.subnet_secondary_ranges[var.default_region2]
   }
 }
