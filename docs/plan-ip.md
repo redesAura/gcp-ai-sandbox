@@ -5,7 +5,7 @@
 - On-premises usa `172.16.0.0/16`; ningún rango de Google Cloud se traslapa con él.
 - Se asigna `10.10.0.0/16` a `us-central1` y `10.20.0.0/16` a `us-east4`.
 - Hub y plataforma son VPC separadas. Sus subredes están dentro del bloque regional común, sin traslaparse entre sí.
-- La VPC de plataforma recibe el rango de Private Service Access `10.10.16.0/20`; PSC para APIs de Google usa `10.255.255.10/32`.
+- La VPC de plataforma recibe el rango de Private Service Access `10.10.16.0/20`; un endpoint PSC para APIs de Google se centraliza en el hub (`10.255.255.10/32`) y se comparte con los spokes por NCC.
 - El dominio y los resolutores DNS on-prem aún no fueron confirmados. Los valores de los archivos `*.example.tfvars` son ejemplos; el reenvío DNS depende de que HA VPN proporcione conectividad a esos resolutores.
 
 ## `us-central1` — `10.10.0.0/16`
@@ -42,13 +42,13 @@
 ## Rangos globales
 
 - PSC a APIs de Google: `10.255.255.10/32`.
-- BGP HA VPN: `169.254.0.0/30` y `169.254.1.0/30` (enlaces de túnel, no subredes VPC).
-- ASN de Cloud Router: `64512`; ASN on-prem (supuesto): `65001`.
+- HA VPN: dos túneles en `us-central1`. En `169.254.0.0/30`, Google usa `.1` y el peer on-prem `.2`; el segundo usa `.1` y `.2` dentro de `169.254.1.0/30`. Son enlaces BGP, no subredes VPC.
+- ASN de Cloud Router: `64512`; ASN on-prem (supuesto): `65001`. No hay VPN en `us-east4` en este diseño.
 - GKE reserva cuatro IP por subred primaria. Se dimensionaron los rangos secundarios de pods bajo la hipótesis del equipo de un `/24` por nodo máximo: `/19` para 32 nodos y `/20` para 16.
 
 ## Pendientes de confirmación
 
-1. Confirmar con redes `172.16.0.0/16`, los ASN y los dos rangos BGP /30.
+1. Confirmar con redes `172.16.0.0/16`, los ASN y los dos rangos BGP /30. HA VPN queda apagada (`enable_ha_vpn = false`) hasta conocer las dos IP públicas on-prem y crear el secreto PSK.
 2. Sustituir `example.com.` y `172.16.0.53`/`172.16.0.54` en los ejemplos por el dominio y los resolutores DNS reales; las dos IP son marcadores, no datos confirmados.
 3. El `/28` de `gke-master-*` se reserva para `4-ai-platform`; no se crea como subred en esta etapa.
 4. Los rangos `snet-aisbx-*` se crean como subredes de la Shared VPC de plataforma; `5-sandboxes` debe asociar sus recursos a la subred del equipo. Las subredes por sí solas no aíslan el tráfico: IAM y reglas de firewall deben completar la separación.

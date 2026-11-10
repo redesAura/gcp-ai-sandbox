@@ -67,7 +67,8 @@ module "base_env" {
   subnet_primary_ranges             = local.subnet_primary_ranges
   subnet_proxy_ranges               = local.subnet_proxy_ranges
   subnet_secondary_ranges           = local.subnet_secondary_ranges
-  private_service_connect_ip        = "10.255.255.10"
+  # El endpoint PSC de APIs de Google vive en el hub y se exporta a los spokes por NCC.
+  private_service_connect_ip        = null
   remote_state_bucket               = var.remote_state_bucket
   tfc_org_name                      = var.tfc_org_name
 }

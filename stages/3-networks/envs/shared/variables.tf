@@ -164,3 +164,42 @@ variable "tfc_org_name" {
   type        = string
   default     = ""
 }
+
+variable "enable_ha_vpn" {
+  description = "Enable the two-tunnel HA VPN from the us-central1 network hub to on-premises. Keep false until peer IPs and the PSK secret exist."
+  type        = bool
+  default     = false
+}
+
+variable "vpn_peer_external_ip1" {
+  description = "Public IPv4 address of on-premises VPN gateway interface 1. Required when enable_ha_vpn is true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_ha_vpn ? try(var.vpn_peer_external_ip1 != var.vpn_peer_external_ip2 && cidrnetmask("${var.vpn_peer_external_ip1}/32") != "", false) : true
+    error_message = "When HA VPN is enabled, vpn_peer_external_ip1 must be a valid IPv4 address."
+  }
+}
+
+variable "vpn_peer_external_ip2" {
+  description = "Public IPv4 address of on-premises VPN gateway interface 2. Required when enable_ha_vpn is true."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_ha_vpn ? try(var.vpn_peer_external_ip2 != var.vpn_peer_external_ip1 && cidrnetmask("${var.vpn_peer_external_ip2}/32") != "", false) : true
+    error_message = "When HA VPN is enabled, vpn_peer_external_ip2 must be a valid IPv4 address."
+  }
+}
+
+variable "vpn_psk_secret_name" {
+  description = "Secret Manager secret containing the HA VPN pre-shared key, in the org secrets project. Required when enable_ha_vpn is true. Never put the PSK value in Terraform variables."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.enable_ha_vpn ? try(trimspace(var.vpn_psk_secret_name) != "", false) : true
+    error_message = "When HA VPN is enabled, vpn_psk_secret_name must name an existing Secret Manager secret."
+  }
+}

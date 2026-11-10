@@ -76,6 +76,6 @@ limitations under the License.
 
 ## Adaptaciones del reto (gcp-ai-sandbox)
 
-Se ajustaron `envs/shared/net-hubs.tf`, `envs/shared/remote.tf`, `envs/production/main.tf`, `envs/production/remote.tf` y `modules/base_env/main.tf` para las regiones `us-central1` y `us-east4`, los rangos documentados en `docs/plan-ip.md`, los nombres de subred de plataforma y los endpoints PSC `10.255.255.10`. Los ejemplos DNS siguen pendientes de confirmación. Cada archivo Terraform modificado conserva el encabezado de licencia y lleva un aviso de modificación.
+Se ajustaron `envs/shared/net-hubs.tf`, `envs/shared/remote.tf`, `envs/shared/variables.tf`, `envs/shared/vpn.tf`, `envs/production/main.tf`, `envs/production/remote.tf` y `modules/base_env/main.tf` para las regiones `us-central1` y `us-east4`, los rangos documentados en `docs/plan-ip.md`, los nombres de subred de plataforma y el endpoint PSC único del hub `10.255.255.10` compartido por NCC, y una VPN HA de dos túneles en `us-central1`, apagada hasta completar las IP públicas y el secreto PSK. Los ejemplos DNS siguen pendientes de confirmación. Cada archivo Terraform modificado conserva el encabezado de licencia y lleva un aviso de modificación.
 
 La configuración no habilita despliegues. Además, `remote.tf` aún requiere alinear los outputs esperados con los que realmente producen `0-bootstrap` y `1-org` antes de usar estados remotos.
