@@ -99,6 +99,7 @@ Después abre el pull request en GitHub, espera a que el pipeline esté en verde
 - Etapa de bootstrap: [`stages/0-bootstrap/`](stages/0-bootstrap/)
 - Etapa de organización: [`stages/1-org/`](stages/1-org/)
 - Etapa de seguridad: [`stages/2-security/`](stages/2-security/)
+- Etapa de redes: [`stages/3-networks/`](stages/3-networks/)
 
 ## Código de terceros
 
