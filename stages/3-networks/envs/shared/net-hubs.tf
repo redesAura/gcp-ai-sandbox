@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
+// Modificado por redesAura (gcp-ai-sandbox) para el plan de red del reto.
+
 locals {
 
   dns_forward_source_range   = "35.199.192.0/19"
-  private_service_connect_ip = "10.17.0.5"
+  private_service_connect_ip = "10.255.255.10"
 
   subnet_primary_ranges = {
-    (local.default_region1) = "10.8.0.0/18"
-    (local.default_region2) = "10.9.0.0/18"
+    (local.default_region1) = "10.10.0.0/24"
+    (local.default_region2) = "10.20.0.0/24"
   }
   subnet_proxy_ranges = {
-    (local.default_region1) = "10.26.0.0/23"
-    (local.default_region2) = "10.27.0.0/23"
+    (local.default_region1) = "10.10.2.0/23"
+    (local.default_region2) = "10.20.2.0/23"
   }
 }
 
@@ -95,7 +97,7 @@ module "shared_vpc" {
 
   subnets = [
     {
-      subnet_name                      = "sb-c-svpc-hub-${local.default_region1}"
+      subnet_name                      = "snet-hub-usc1"
       subnet_ip                        = local.subnet_primary_ranges[local.default_region1]
       subnet_region                    = local.default_region1
       subnet_private_access            = "true"
@@ -108,7 +110,7 @@ module "shared_vpc" {
       description                      = "Network hub subnet for ${local.default_region1}"
     },
     {
-      subnet_name                      = "sb-c-svpc-hub-${local.default_region2}"
+      subnet_name                      = "snet-hub-use4"
       subnet_ip                        = local.subnet_primary_ranges[local.default_region2]
       subnet_region                    = local.default_region2
       subnet_private_access            = "true"
@@ -121,7 +123,7 @@ module "shared_vpc" {
       description                      = "Network hub subnet for ${local.default_region2}"
     },
     {
-      subnet_name           = "sb-c-svpc-hub-${local.default_region1}-proxy"
+      subnet_name           = "snet-hub-usc1-proxy"
       subnet_ip             = local.subnet_proxy_ranges[local.default_region1]
       subnet_region         = local.default_region1
       subnet_private_access = "false"
@@ -131,7 +133,7 @@ module "shared_vpc" {
       purpose               = "REGIONAL_MANAGED_PROXY"
     },
     {
-      subnet_name           = "sb-c-svpc-hub-${local.default_region2}-proxy"
+      subnet_name           = "snet-hub-use4-proxy"
       subnet_ip             = local.subnet_proxy_ranges[local.default_region2]
       subnet_region         = local.default_region2
       subnet_private_access = "false"

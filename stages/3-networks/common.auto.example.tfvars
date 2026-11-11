@@ -15,7 +15,7 @@
  */
 
 // The DNS name of peering managed zone. Must end with a period.
-domain = "example.com."
+domain = "example.com." // TODO: sustituir por el dominio DNS confirmado.
 
 remote_state_bucket = "REMOTE_STATE_BUCKET"
 

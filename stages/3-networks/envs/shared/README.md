@@ -46,3 +46,13 @@ The purpose of this step is to set up the global [DNS Hub](https://cloud.google.
 | shared\_vpc\_host\_project\_id | The host project ID |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+<!-- Modificado por redesAura (gcp-ai-sandbox) para documentar la adaptación de VPN/PSC del reto. -->
+
+## Adaptación del reto: HA VPN y PSC
+
+El endpoint PSC para las APIs de Google se centraliza en el hub (`10.255.255.10/32`); su ruta se exporta a los spokes por NCC. Los endpoints privados para modelos publicados de Vertex AI son otro flujo y corresponden a `4-ai-platform`.
+
+`envs/shared/vpn.tf` prepara una HA VPN de dos túneles en `us-central1`, con ASN Cloud Router `64512` y ASN on-prem `65001`. Usa los dos rangos del plan: `169.254.0.0/30` y `169.254.1.0/30`. La variable `enable_ha_vpn` queda en `false` hasta que se indiquen las dos IP públicas de los gateways on-prem y exista el secreto PSK en Secret Manager. El valor del PSK nunca va en `.tfvars`.
+
+La VPN permite que el DNS del hub alcance los resolutores on-prem y anuncia por BGP los rangos de plataforma, GKE, PSA, PSC y sandboxes para el retorno desde on-prem. El firewall on-prem debe permitir consultas DNS desde `35.199.192.0/19`. Los archivos `vpn.tf.example` y `routers.tf.example` originales se conservan como referencia para las opciones del template; la configuración del reto usa una sola VPN regional de dos túneles.

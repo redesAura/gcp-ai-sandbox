@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 
+// EJEMPLO PENDIENTE: sustituir por resolutores on-prem reales alcanzables por HA VPN.
+// 172.16.0.53 y .54 son marcadores, no valores confirmados.
 // List of IPv4 address of target name servers for the forwarding zone configuration.
 // See https://cloud.google.com/dns/docs/overview#dns-forwarding-zones
+
+// HA VPN permanece apagada hasta confirmar IPs públicas on-prem y secreto PSK.
+// Para habilitarla, define estas entradas en shared.auto.tfvars (no guardes el PSK aquí):
+// enable_ha_vpn         = true
+// vpn_peer_external_ip1 = "<ON_PREM_PUBLIC_IPV4_1>"
+// vpn_peer_external_ip2 = "<ON_PREM_PUBLIC_IPV4_2>"
+// vpn_psk_secret_name   = "<SECRET_MANAGER_SECRET_NAME>"
 target_name_server_addresses = [
   {
-    ipv4_address    = "192.168.0.1",
+    ipv4_address    = "172.16.0.53",
     forwarding_path = "default"
   },
   {
-    ipv4_address    = "192.168.0.2",
+    ipv4_address    = "172.16.0.54",
     forwarding_path = "default"
   }
 ]
